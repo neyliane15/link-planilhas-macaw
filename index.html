@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal de Planilhas — OneDrive</title>
+  <meta name="description" content="Acesse rapidamente suas planilhas do OneDrive em um painel organizado, com busca, filtros e categorias.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- TailwindCSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+          colors: {
+            brand: {
+              50: '#eef7ff', 100: '#d9edff', 200: '#bfe0ff', 300: '#95cdff', 400: '#62b2ff',
+              500: '#3d96f3', 600: '#2477d6', 700: '#1b5fb0', 800: '#1a4f8a', 900: '#163f6d'
+            }
+          }
+        }
+      },
+      darkMode: 'class'
+    }
+  </script>
+  <style>
+    html, body { height: 100%; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-zinc-50 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
+  <!-- Wrapper -->
+  <div class="min-h-screen flex flex-col">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-30 backdrop-blur bg-white/80 dark:bg-zinc-900/70 border-b border-zinc-200 dark:border-zinc-800">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <!-- Simple OneDrive-like icon -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-brand-600">
+            <path d="M7.5 16.5h9a3.5 3.5 0 0 0 0-7c-.27 0-.53.03-.78.08A5.5 5.5 0 0 0 6.8 7.9a4 4 0 0 0 .8 7.93h-.1z" fill="currentColor" opacity=".9"/>
+            <path d="M7.5 16.5a3.5 3.5 0 1 1 0-7c.27 0 .53.03.78.08A5.5 5.5 0 1 1 16.5 16.5h-9z" fill="currentColor" opacity=".5"/>
+          </svg>
+          <h1 class="text-xl sm:text-2xl font-semibold tracking-tight">Portal de Planilhas — OneDrive</h1>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <button id="btnDark" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm">Alternar tema</button>
+          <button id="btnExport" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm">Exportar JSON</button>
+          <label class="cursor-pointer px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-sm">
+            Importar JSON
+            <input id="fileImport" type="file" accept="application/json" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
+      <!-- Controls -->
+      <section class="flex flex-col sm:flex-row gap-3 sm:items-center mb-4">
+        <div class="relative flex-1">
+          <input id="search" type="text" placeholder="Buscar planilha por nome, tag ou responsável…" class="w-full rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/70 px-4 py-3 pr-10 outline-none focus:ring-4 focus:ring-brand-200 dark:focus:ring-brand-800" />
+          <svg class="absolute right-3 top-1/2 -translate-y-1/2" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/></svg>
+        </div>
+        <select id="filterTag" class="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/70 px-4 py-3 outline-none min-w-[180px]">
+          <option value="">Todas as tags</option>
+        </select>
+        <select id="sortBy" class="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/70 px-4 py-3 outline-none min-w-[200px]">
+          <option value="alpha">Ordenar: A → Z</option>
+          <option value="recent">Ordenar: Recentes</option>
+        </select>
+      </section>
+
+      <!-- Quick actions -->
+      <section class="mb-6">
+        <details class="group rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4">
+          <summary class="cursor-pointer font-medium select-none flex items-center gap-2">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-800 text-brand-700 dark:text-brand-100 text-xs">i</span>
+            Como adicionar/editar links
+          </summary>
+          <div class="mt-3 text-sm text-zinc-600 dark:text-zinc-300 space-y-2">
+            <p>Edite o array <code>DATASETS</code> no final deste arquivo HTML. Cada item aceita: <code>title</code>, <code>description</code>, <code>url</code> (link de compartilhamento do OneDrive), <code>tags</code> (lista), <code>owner</code> e <code>updatedAt</code> (aaaa-mm-dd).</p>
+            <p>Você também pode <strong>importar</strong> um JSON (botão no topo) ou <strong>exportar</strong> a configuração atual para backup.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Grid -->
+      <section>
+        <div id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <p id="emptyState" class="hidden text-center text-zinc-500 dark:text-zinc-400 mt-8">Nenhuma planilha encontrada. Ajuste a busca ou filtros.</p>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 py-6">
+      <div class="max-w-6xl mx-auto px-4 text-sm text-zinc-500 dark:text-zinc-400 flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+        <p>© <span id="year"></span> Portal de Planilhas. Feito para acesso rápido às suas planilhas do OneDrive.</p>
+        <p class="opacity-80">Dica: use links de compartilhamento com permissão só de leitura para segurança.</p>
+      </div>
+    </footer>
+  </div>
+
+  <template id="cardTpl">
+    <article class="group rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-800/60 backdrop-blur p-4 hover:shadow-sm transition-shadow">
+      <div class="flex items-start gap-3">
+        <div class="shrink-0 mt-1">
+          <!-- Excel icon -->
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-emerald-600">
+            <rect x="3" y="4" width="18" height="16" rx="2" fill="currentColor" opacity=".15"/>
+            <path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-start gap-2">
+            <h3 class="font-semibold leading-tight truncate max-w-[70%]"></h3>
+            <span class="ml-auto text-xs px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-700/70 text-zinc-700 dark:text-zinc-200 whitespace-nowrap tag-badge"></span>
+          </div>
+          <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300 line-clamp-2"></p>
+          <div class="mt-3 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+            <span class="owner"></span>
+            <span class="date"></span>
+          </div>
+          <div class="mt-4 flex items-center gap-2">
+            <a class="btnOpen inline-flex items-center justify-center px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm" target="_blank" rel="noopener">Abrir</a>
+            <button class="btnCopy px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-sm">Copiar link</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    // ====== Dados de exemplo (edite aqui) ======
+    // Substitua pelos seus links reais do OneDrive (URL de compartilhamento)
+    const DATASETS = [
+      {
+        title: 'DRE Camboinhas',
+        description: 'Controle mensal do caixa com entradas/saídas e projeções.',
+        url: 'https://1drv.ms/x/c/b561c2b92ba9cb31/Ea5tY-oLlyRImGfbYgReWtABJcjcyl0RW9DhOkMutIWVXw?e=0gyEwx',
+        tags: ['Financeiro', 'DRE'],
+        owner: 'Equipe Financeira',
+        updatedAt: '2025-09-08'
+      },
+      {
+        title: 'DRE Búzios',
+        description: 'Controle mensal do caixa com entradas/saídas e projeções.',
+        url: 'https://1drv.ms/x/c/b561c2b92ba9cb31/EQbAopRpwuBBuQC0ZzXNchYBrls8FWKJ_Hpr_iEnsgjzdQ?e=Ez8Utv',
+        tags: ['Financeiro', 'DRE'],
+        owner: 'Equipe Financeira',
+        updatedAt: '2025-09-08'
+      },
+      {
+        title: 'DRE Central',
+        description: 'Controle mensal do caixa com entradas/saídas e projeções.',
+        url: 'https://1drv.ms/x/c/b561c2b92ba9cb31/EZ6QqRGvpNNApIvBQy8_naQBfZERPrvdxn9_PYiIHzQWeA?e=RXr6aZ',
+        tags: ['Financeiro', 'DRE'],
+        owner: 'Equipe Financeira',
+        updatedAt: '2025-09-08'
+      }
+    ];
+
+    // ====== Utilitários ======
+    const $ = (q, el=document) => el.querySelector(q);
+    const $$ = (q, el=document) => Array.from(el.querySelectorAll(q));
+
+    const state = {
+      q: '',
+      tag: '',
+      sortBy: 'alpha',
+      items: [...DATASETS]
+    };
+
+    function normalize(str='') {
+      return str.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase();
+    }
+
+    function applyFilters() {
+      let items = [...state.items];
+      const nq = normalize(state.q);
+      if (nq) {
+        items = items.filter(it =>
+          normalize(it.title).includes(nq) ||
+          normalize(it.description||'').includes(nq) ||
+          (it.tags||[]).some(t => normalize(t).includes(nq)) ||
+          normalize(it.owner||'').includes(nq)
+        );
+      }
+      if (state.tag) {
+        items = items.filter(it => (it.tags||[]).includes(state.tag));
+      }
+      if (state.sortBy === 'alpha') {
+        items.sort((a,b)=> a.title.localeCompare(b.title));
+      } else if (state.sortBy === 'recent') {
+        items.sort((a,b)=> new Date(b.updatedAt||0) - new Date(a.updatedAt||0));
+      }
+      render(items);
+    }
+
+    function render(items) {
+      const grid = $('#grid');
+      grid.innerHTML = '';
+      const empty = $('#emptyState');
+      empty.classList.toggle('hidden', items.length !== 0);
+
+      const tpl = $('#cardTpl');
+      items.forEach(it => {
+        const node = tpl.content.cloneNode(true);
+        $('h3', node).textContent = it.title;
+        $('p', node).textContent = it.description || '';
+        $('.tag-badge', node).textContent = (it.tags && it.tags[0]) ? it.tags[0] : 'Sem tag';
+        $('.owner', node).textContent = it.owner ? `Resp.: ${it.owner}` : '';
+        $('.date', node).textContent = it.updatedAt ? new Date(it.updatedAt).toLocaleDateString() : '';
+        const a = $('.btnOpen', node);
+        a.href = it.url;
+        $('.btnCopy', node).addEventListener('click', async ()=>{
+          try { await navigator.clipboard.writeText(it.url); toast('Link copiado!'); } catch {}
+        });
+        grid.appendChild(node);
+      });
+    }
+
+    function buildTags() {
+      const tagSet = new Set();
+      state.items.forEach(it => (it.tags||[]).forEach(t => tagSet.add(t)));
+      const select = $('#filterTag');
+      // preserve first option
+      select.innerHTML = '<option value="">Todas as tags</option>' +
+        Array.from(tagSet).sort().map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+
+    function toast(msg) {
+      const el = document.createElement('div');
+      el.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900 px-4 py-2 rounded-xl shadow-lg';
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(()=> el.remove(), 1800);
+    }
+
+    function saveToLocal() {
+      localStorage.setItem('portal:items', JSON.stringify(state.items));
+    }
+    function loadFromLocal() {
+      const raw = localStorage.getItem('portal:items');
+      if (raw) {
+        try { state.items = JSON.parse(raw); } catch {}
+      }
+    }
+
+    function exportJSON() {
+      const data = new Blob([JSON.stringify(state.items, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portal-planilhas.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const arr = JSON.parse(reader.result);
+          if (Array.isArray(arr)) {
+            state.items = arr;
+            saveToLocal();
+            buildTags();
+            applyFilters();
+            toast('Lista importada com sucesso');
+          } else {
+            toast('Arquivo inválido');
+          }
+        } catch {
+          toast('Erro ao ler JSON');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Dark mode toggle
+    function initTheme() {
+      const saved = localStorage.getItem('portal:theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if ((saved === 'dark') || (!saved && prefersDark)) document.documentElement.classList.add('dark');
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('portal:theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    // ====== Init ======
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      loadFromLocal();
+      buildTags();
+      applyFilters();
+      $('#year').textContent = new Date().getFullYear();
+
+      $('#search').addEventListener('input', (e)=>{ state.q = e.target.value; applyFilters(); });
+      $('#filterTag').addEventListener('change', (e)=>{ state.tag = e.target.value; applyFilters(); });
+      $('#sortBy').addEventListener('change', (e)=>{ state.sortBy = e.target.value; applyFilters(); });
+      $('#btnDark').addEventListener('click', toggleTheme);
+      $('#btnExport').addEventListener('click', exportJSON);
+      $('#fileImport').addEventListener('change', (e)=>{ if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = '' });
+    });
+  </script>
+
+  <!--
+  ======================================
+  COMO CONFIGURAR SEUS LINKS DO ONEDRIVE
+  ======================================
+  1) No OneDrive, clique com o botão direito no arquivo Excel → Compartilhar → Copiar link.
+  2) Cole o link no campo "url" dos itens do array DATASETS acima.
+  3) Ajuste título, descrição, tags, responsável (owner) e a data (updatedAt) se desejar.
+  4) Opcional: use "Exportar JSON" para salvar a lista; depois, em outro computador, use "Importar JSON".
+  5) Segurança: prefira links somente leitura.
+  -->
+</body>
+</html>
